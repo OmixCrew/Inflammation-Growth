@@ -1,0 +1,1834 @@
+---
+title: "Inflammation impairs post-hospital discharge growth among children hospitalised with acute illness in sub-Saharan Africa and south Asia"
+author: "James Njunge"
+date: "`r Sys.Date()`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+
+Load Packages
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+library(lme4)
+library(lmerTest)
+library(ggplot2)
+library(dplyr)
+library(here) # here() = "~/Dropbox/JN Fellowship"
+library(glmnet)
+library(reshape)
+library(ggbeeswarm)
+#library(kable)
+library (kableExtra)
+library(gtsummary)
+library(tidyverse)
+library(readr)
+library(arsenal)
+#library(mosaics)
+library(data.table)
+library(DT)
+library(plotly)
+library(RColorBrewer)
+library(outliers)
+library(qwraps2)
+library(rstatix)
+library(mgsub)
+library(ggthemes)
+library(ggpubr)
+library(tinytex)
+library(foreign)
+library(arsenal)
+library(pacman)
+library(ggfortify)
+library(reshape2)
+library(stringr)
+library(multcomp)
+library(psych)
+library(openxlsx)
+library(ggfortify)
+#library(xlsx)
+library(readxl)
+library(forcats)
+library(corrplot)
+library(FactoMineR)
+library(factoextra)
+#library(variancePartition)
+library(lattice)
+library(DataExplorer)
+#library(Boruta)
+library(mlbench)
+library(caret)
+#library(randomForest)
+library(ggcorrplot)
+library(Hmisc)
+library(ROCR)
+library(haven)
+library(MASS)
+library(broom)
+library(ggpubr)
+#library(acPCA)
+library(cli)
+library(rlang)
+library(naniar)
+library(visdat)
+library(MatchIt)
+#library(impute)
+library(lavaan)
+#library(circlize)
+#library(ComplexHeatmap)
+library(dendextend)
+library(ggstatsplot)
+library(PMCMRplus)
+library(RColorBrewer)
+library(PerformanceAnalytics)
+library(lavaan)
+library(lavaanPlot)
+library(DiagrammeRsvg)
+library(rsvg)
+library(corrplot) 
+library(GPArotation) 
+library(nFactors)  
+#library(OlinkAnalyze)
+library(extrafont)
+library(MASS)
+library(plotly)
+#library(lcmm)
+
+```
+
+Baseline Characteristics at Discharge - Table 1  
+
+```{r BASELINE CHARACTERISTICS DISCHARGE}
+rm(list = ls())
+
+my_adat10<-read.csv(( "~/Dropbox/JN Fellowship/datasets/processed_datasets/my_adat10_26042025.csv"),
+                        na.strings = c("NA", NA, "","."), row.names = 1)
+
+get_table1 <- my_adat10 %>% 
+  dplyr:: select(selection, discharge_age, sex_adm, site, waz_disch, muac_disch, whz_disch, haz_disch, WAD_disch, waz_fu90, WAD_fu90,  Delta_WAZ_fu90, Delta_WAD_fu90, Days_Hospitalised, albumin_disch, haemoglobin_adj_disch, rbc_disch, wbc_disch, platelets_disch, neutrophils_disch, lymphocytes_disch, osinophils_disch, monocytes_disch, basophils_disch,  alt_disch,	alk_phosphate_disch, urea_disch, creatinine_disch, bilirubin_disch, i_phosphate_disch, magnesium_disch, calcium_adj_disch, diag_lrti_pneumonia_adm, Diarrhoea_adm_binary,	diag_sepsis_adm, diag_malaria_adm, diag_anaemia_adm, diag_tb_adm, categ_enrol  ) %>%
+  tbl_summary(by = selection,
+              type = list(discharge_age ~ 'continuous2',
+                          waz_disch ~ 'continuous2',
+                          muac_disch ~ 'continuous2',
+                          whz_disch ~ 'continuous2',
+                          WAD_disch ~ 'continuous2',
+                          waz_fu90 ~ 'continuous2',
+                          WAD_fu90 ~ 'continuous2',
+                          Delta_WAZ_fu90 ~ 'continuous2',
+                          Delta_WAD_fu90 ~ 'continuous2',
+                          haz_disch ~ "continuous2",
+                          Days_Hospitalised ~ 'continuous2',
+                          albumin_disch ~ 'continuous2',
+                          haemoglobin_adj_disch ~ 'continuous2',
+                          rbc_disch ~ 'continuous2',
+                          wbc_disch ~ 'continuous2',
+                          platelets_disch ~ 'continuous2',
+                          neutrophils_disch ~ 'continuous2',
+                          lymphocytes_disch ~ 'continuous2',
+                          osinophils_disch ~ 'continuous2',
+                          monocytes_disch ~ 'continuous2',
+                          basophils_disch ~ 'continuous2',
+                          alt_disch ~ 'continuous2',
+                          alk_phosphate_disch ~ 'continuous2',
+                          urea_disch ~ 'continuous2',
+                          creatinine_disch ~ 'continuous2',
+                          bilirubin_disch ~ 'continuous2',
+                          i_phosphate_disch ~ 'continuous2',
+                          magnesium_disch ~ 'continuous2',
+                          calcium_adj_disch ~ 'continuous2'),
+                statistic = list(all_continuous() ~ c("{median} ({p25} - {p75})")),
+              label = list(discharge_age ~ "Age (months)",
+                           sex_adm ~ "Sex (%)",
+                           site ~ "Site",
+                           waz_disch ~ "Weight-for-age z-score",
+                           muac_disch ~ "Mid-upper arm circumference (cm)",
+                           whz_disch ~ "Weight-for-height z-score",
+                           haz_disch ~ "Height-for-age z-score",
+                          WAD_disch ~ 'Weight absolute deficit (WAD) at discharge',
+                          waz_fu90 ~ 'WAZ at 3 months',
+                          WAD_fu90 ~ 'Weight absolute deficit (WAD) at 3 months',
+                          Delta_WAZ_fu90 ~ 'Change in the WAZ between discharge and 3 months',
+                           Delta_WAD_fu90 ~ 'Change in the WAD between discharge and 3 months',
+                           Days_Hospitalised ~ "Days in Hospital",
+                           albumin_disch ~ "Albumin",
+                           haemoglobin_adj_disch ~ "Haemoglobin",
+                           rbc_disch ~ "RBC",
+                           wbc_disch ~ "WBC",
+                           platelets_disch ~ "Platelets",
+                           neutrophils_disch ~ "Neutrophils",
+                           lymphocytes_disch ~ "Lymphocytes",
+                           osinophils_disch ~ "Eosinophils",
+                           monocytes_disch ~ "Monocytes",
+                           basophils_disch ~ "Basophils",
+                           alt_disch ~ "Alanine Transaminase",
+                           alk_phosphate_disch ~ "Alkaline Phosphatase",
+                           urea_disch ~ "Blood Urea Nitrogen",
+                           creatinine_disch ~ "Creatinine",
+                           bilirubin_disch ~ "Bilirubin",
+                           i_phosphate_disch ~ "Phosphate",
+                           magnesium_disch ~ "Magnesium",
+                           calcium_adj_disch ~ "Calcium",
+                           diag_lrti_pneumonia_adm ~ "Pneumonia",
+                           Diarrhoea_adm_binary ~ "Diarrhoea",
+                           diag_sepsis_adm ~ "Sepsis",
+                           diag_malaria_adm ~ "Malaria",
+                           diag_anaemia_adm ~ "Anaemia",
+                           diag_tb_adm ~ "Pulmonary TB",
+                          categ_enrol ~ "Nutritional group"),
+                            missing = "no") %>% 
+
+modify_caption("**Table 1. Participant Characteristics**") %>%
+bold_labels() %>%
+as_kable_extra(table.attr = "style='width:101%;'") %>%
+kable_classic(full_width = T, font_size = 14, html_font = "sans-serif") %>%
+row_spec(0, bold = T) %>%
+pack_rows("Demographic", 1, 15, label_row_css = "background-color: #666; color: #fff;") %>%
+pack_rows("Anthropometric indices", 16, 33, label_row_css = "background-color: #666; color: #fff;") %>%
+pack_rows("Length of hopitalization", 34, 35, label_row_css = "background-color: #666; color: #fff;") %>%
+pack_rows("Haematology", 36, 55, label_row_css = "background-color: #666; color: #fff;") %>%
+pack_rows("Biochemistry", 56, 71, label_row_css = "background-color: #666; color: #fff;") %>%
+pack_rows("Clinical illness at admission", 72, 77, label_row_css = "background-color: #666; color: #fff;") %>% 
+pack_rows("Nutritional category at enrolment", 78, 79, label_row_css = "background-color: #666; color: #fff;")
+
+get_table1
+```
+
+CHARACTERISTICS by sex
+
+```{r CHARACTERISTICS by sex}
+rm(list = ls())
+
+my_adat10<-read.csv(( "~/Dropbox/JN Fellowship/datasets/processed_datasets/my_adat10_26042025.csv"),
+                        na.strings = c("NA", NA, "","."), row.names = 1)
+
+library(gtsummary)
+library(dplyr)
+library(kableExtra)
+
+# 1) Define p-value formatter first
+pvalue_sci <- function(x, small_cutoff = 1e-4, sci_digits = 3, dec_digits = 4, prepend_p = FALSE) {
+  out <- ifelse(
+    is.na(x), NA_character_,
+    ifelse(
+      x < small_cutoff,
+      formatC(x, format = "e", digits = sci_digits),  # scientific
+      formatC(x, format = "f", digits = dec_digits)   # fixed decimals
+    )
+  )
+  if (prepend_p) paste0("p = ", out) else out
+}
+
+get_tableS4 <- my_adat10 %>% 
+  dplyr::select(
+    discharge_age, categ_enrol, sex_adm, waz_disch, muac_disch, whz_disch, haz_disch, WAD_disch,
+    waz_fu90, WAD_fu90, Delta_WAZ_fu90, Delta_WAD_fu90,
+    albumin_disch, haemoglobin_adj_disch, rbc_disch, wbc_disch, platelets_disch,
+    neutrophils_disch, lymphocytes_disch, osinophils_disch, monocytes_disch, basophils_disch,
+    CCL21, CFHR5, IL1RAP, C8G, ATP1B1, TNF, IFNG, IL1B, IL10, sCD14, LBP,
+    PLA2G2A, CRP, GHR, THBS4, ACAN, IGFBP6, IGFBP3, IGF2, IGF1, GDF11, CREG1, GDF15, PYY, GCG, IGFBP2,
+    MPO_abs, AAT_abs, CAL_abs, LPS_abs, FABP2, ZO1, OCLN, CLD1, CDH1, JAMA, DAO, DSG3, HPT,
+    DEFA5, REG3A, PD_L2, RBP4
+  ) %>%
+  tbl_summary(
+    by = sex_adm,
+    # one row per variable; put both stats in the same cell
+    type      = all_continuous() ~ "continuous",
+    statistic = all_continuous() ~ "{median} ({p25}, {p75}) | {mean} ({sd})",
+    digits    = all_continuous() ~ 2,
+    label = list(
+      discharge_age ~ "Age (months)",
+      categ_enrol ~ "Nutritional group",
+      waz_disch ~ "Weight-for-age z-score",
+      muac_disch ~ "Mid-upper arm circumference (cm)",
+      whz_disch ~ "Weight-for-height z-score",
+      haz_disch ~ "Height-for-age z-score",
+      WAD_disch ~ "Weight absolute deficit (WAD) at discharge",
+      waz_fu90 ~ "WAZ at 3 months",
+      WAD_fu90 ~ "Weight absolute deficit (WAD) at 3 months",
+      Delta_WAZ_fu90 ~ "Change in WAZ (discharge → 3 months)",
+      Delta_WAD_fu90 ~ "Change in WAD (discharge → 3 months)",
+      albumin_disch ~ "Albumin",
+      haemoglobin_adj_disch ~ "Haemoglobin",
+      rbc_disch ~ "RBC", wbc_disch ~ "WBC", platelets_disch ~ "Platelets",
+      neutrophils_disch ~ "Neutrophils",
+      lymphocytes_disch ~ "Lymphocytes",
+      osinophils_disch ~ "Eosinophils",
+      monocytes_disch ~ "Monocytes",
+      basophils_disch ~ "Basophils",
+      MPO_abs ~ "Myeloperoxidase ng/ml",
+      AAT_abs ~ "Alpha-1-antitrypsin µg/ml",
+      CAL_abs ~ "Calprotectin µg/ml",
+      LPS_abs ~ "Lipopolysaccharides EU/ml"
+    ),
+    missing = "no"
+  ) %>%
+  modify_spanning_header(c("stat_1", "stat_2") ~ "**Sex**") %>%
+  modify_header(
+    label ~ "**Variable**",
+    all_stat_cols() ~ "**{level}**\n(n={n})"
+  ) %>%
+  add_p(pvalue_fun = ~ pvalue_sci(.x, small_cutoff = 1e-4, sci_digits = 3, dec_digits = 4)) %>%
+  modify_header(p.value ~ "p-value") %>%
+  bold_labels() %>%
+  modify_caption("**Table 1. Participant Characteristics by Sex**") %>%
+  # Force HTML before kableExtra ops to avoid nodeset_apply NULL errors
+  as_kable_extra(format = "html", table.attr = "style='width:101%;'") %>%
+  kable_classic(full_width = TRUE, font_size = 14, html_font = "sans-serif") %>%
+  row_spec(0, bold = TRUE) %>%
+  # NOTE: verify these indices after rendering; they are sensitive to row counts.
+  pack_rows("Nutritional status", 2, 5, label_row_css = "background-color: #666; color: #fff;") %>%
+  pack_rows("Anthropometric indices", 6, 15, label_row_css = "background-color: #666; color: #fff;") %>%
+  pack_rows("Haematology", 15, 24, label_row_css = "background-color: #666; color: #fff;") %>%
+  pack_rows("Systemic inflammation", 25, 37, label_row_css = "background-color: #666; color: #fff;") %>%
+  pack_rows("Growth mediators", 38, 50, label_row_css = "background-color: #666; color: #fff;") %>%
+  pack_rows("Enteric inflammation and permeability biomarkers", 51, 67, label_row_css = "background-color: #666; color: #fff;")
+
+get_tableS4
+```
+
+CHARACTERISTICS by nutritional status
+
+```{r CHARACTERISTICS by nutritional status}
+rm(list = ls())
+
+my_adat10<-read.csv(( "~/Dropbox/JN Fellowship/datasets/processed_datasets/my_adat10_26042025.csv"),
+                        na.strings = c("NA", NA, "","."), row.names = 1)
+
+library(gtsummary)
+library(dplyr)
+library(kableExtra)
+
+pvalue_sci <- function(x, small_cutoff = 1e-4, sci_digits = 3, dec_digits = 4, prepend_p = FALSE) {
+  out <- ifelse(
+    is.na(x), NA_character_,
+    ifelse(
+      x < small_cutoff,
+      formatC(x, format = "e", digits = sci_digits),  # scientific
+      formatC(x, format = "f", digits = dec_digits)   # fixed decimals
+    )
+  )
+  if (prepend_p) paste0("p = ", out) else out
+}
+
+get_tableS5 <- my_adat10 %>% 
+  dplyr::select(
+    discharge_age, categ_enrol, waz_disch, muac_disch, whz_disch, haz_disch, WAD_disch,
+    waz_fu90, WAD_fu90, Delta_WAZ_fu90, Delta_WAD_fu90,
+    albumin_disch, haemoglobin_adj_disch, rbc_disch, wbc_disch, platelets_disch,
+    neutrophils_disch, lymphocytes_disch, osinophils_disch, monocytes_disch, basophils_disch,
+    CCL21, CFHR5, IL1RAP, C8G, ATP1B1, TNF, IFNG, IL1B, IL10, sCD14, LBP,
+    PLA2G2A, CRP, GHR, THBS4, ACAN, IGFBP6, IGFBP3, IGF2, IGF1, GDF11, CREG1, GDF15, PYY, GCG, IGFBP2,
+    MPO_abs, AAT_abs, CAL_abs, LPS_abs, FABP2, ZO1, OCLN, CLD1, CDH1, JAMA, DAO, DSG3, HPT,
+    DEFA5, REG3A, PD_L2, RBP4
+  ) %>%
+  tbl_summary(
+    by = categ_enrol,
+    # one row per variable; put both stats in the same cell
+    type      = all_continuous() ~ "continuous",
+    statistic = all_continuous() ~ "{median} ({p25}, {p75}) | {mean} ({sd})",
+    digits    = all_continuous() ~ 2,
+    label = list(
+      discharge_age ~ "Age (months)",
+      #categ_enrol ~ "Nutritional group",
+      waz_disch ~ "Weight-for-age z-score",
+      muac_disch ~ "Mid-upper arm circumference (cm)",
+      whz_disch ~ "Weight-for-height z-score",
+      haz_disch ~ "Height-for-age z-score",
+      WAD_disch ~ "Weight absolute deficit (WAD) at discharge",
+      waz_fu90 ~ "WAZ at 3 months",
+      WAD_fu90 ~ "Weight absolute deficit (WAD) at 3 months",
+      Delta_WAZ_fu90 ~ "Change in WAZ (discharge → 3 months)",
+      Delta_WAD_fu90 ~ "Change in WAD (discharge → 3 months)",
+      albumin_disch ~ "Albumin",
+      haemoglobin_adj_disch ~ "Haemoglobin",
+      rbc_disch ~ "RBC", wbc_disch ~ "WBC", platelets_disch ~ "Platelets",
+      neutrophils_disch ~ "Neutrophils",
+      lymphocytes_disch ~ "Lymphocytes",
+      osinophils_disch ~ "Eosinophils",
+      monocytes_disch ~ "Monocytes",
+      basophils_disch ~ "Basophils",
+      MPO_abs ~ "Myeloperoxidase ng/ml",
+      AAT_abs ~ "Alpha-1-antitrypsin µg/ml",
+      CAL_abs ~ "Calprotectin µg/ml",
+      LPS_abs ~ "Lipopolysaccharides EU/ml"
+    ),
+    missing = "no"
+  ) %>%
+  modify_spanning_header(c("stat_1", "stat_2", "stat_3") ~ "**Nutritional group**") %>%
+  modify_header(
+    label ~ "**Variable**",
+    all_stat_cols() ~ "**{level}**\n(n={n})"
+  ) %>%
+  add_p(pvalue_fun = ~ pvalue_sci(.x, small_cutoff = 1e-4, sci_digits = 3, dec_digits = 4)) %>%
+  modify_header(p.value ~ "p-value") %>%
+  bold_labels() %>%
+  modify_caption("**Table 1. Participant Characteristics by nutritional status**") %>%
+  as_kable_extra(format = "html", table.attr = "style='width:101%;'") %>%
+  kable_classic(full_width = TRUE, font_size = 14, html_font = "sans-serif") %>%
+  row_spec(0, bold = TRUE) %>%
+  pack_rows("Anthropometric indices", 2, 10, label_row_css = "background-color: #666; color: #fff;") %>%
+  pack_rows("Haematology", 11, 20, label_row_css = "background-color: #666; color: #fff;") %>%
+  pack_rows("Systemic inflammation", 21, 33, label_row_css = "background-color: #666; color: #fff;") %>%
+  pack_rows("Growth mediators", 34, 46, label_row_css = "background-color: #666; color: #fff;") %>%
+  pack_rows("Enteric inflammation and permeability biomarkers", 47, 63, label_row_css = "background-color: #666; color: #fff;")
+
+get_tableS5
+
+```
+
+CHARACTERISTICS by age group
+
+```{r BASELINE CHARACTERISTICS by age group}
+rm(list = ls())
+
+my_adat10<-read.csv(( "~/Dropbox/JN Fellowship/datasets/processed_datasets/my_adat10_26042025.csv"),
+                        na.strings = c("NA", NA, "","."), row.names = 1)
+
+library(gtsummary)
+library(dplyr)
+library(kableExtra)
+
+pvalue_sci <- function(x, small_cutoff = 1e-4, sci_digits = 3, dec_digits = 4, prepend_p = FALSE) {
+  out <- ifelse(
+    is.na(x), NA_character_,
+    ifelse(
+      x < small_cutoff,
+      formatC(x, format = "e", digits = sci_digits),  # scientific
+      formatC(x, format = "f", digits = dec_digits)   # fixed decimals
+    )
+  )
+  if (prepend_p) paste0("p = ", out) else out
+}
+
+get_tableS6 <- my_adat10 %>% 
+  dplyr::select(
+   age_group_adm,  categ_enrol, waz_disch, muac_disch, whz_disch, haz_disch, WAD_disch,
+    waz_fu90, WAD_fu90, Delta_WAZ_fu90, Delta_WAD_fu90,
+    albumin_disch, haemoglobin_adj_disch, rbc_disch, wbc_disch, platelets_disch,
+    neutrophils_disch, lymphocytes_disch, osinophils_disch, monocytes_disch, basophils_disch,
+    CCL21, CFHR5, IL1RAP, C8G, ATP1B1, TNF, IFNG, IL1B, IL10, sCD14, LBP,
+    PLA2G2A, CRP, GHR, THBS4, ACAN, IGFBP6, IGFBP3, IGF2, IGF1, GDF11, CREG1, GDF15, PYY, GCG, IGFBP2,
+    MPO_abs, AAT_abs, CAL_abs, LPS_abs, FABP2, ZO1, OCLN, CLD1, CDH1, JAMA, DAO, DSG3, HPT,
+    DEFA5, REG3A, PD_L2, RBP4
+  ) %>%
+  tbl_summary(
+    by = age_group_adm,
+    # one row per variable; put both stats in the same cell
+    type      = all_continuous() ~ "continuous",
+    statistic = all_continuous() ~ "{median} ({p25}, {p75}) | {mean} ({sd})",
+    digits    = all_continuous() ~ 2,
+    label = list(
+      #discharge_age ~ "Age (months)",
+      categ_enrol ~ "Nutritional group",
+      waz_disch ~ "Weight-for-age z-score",
+      muac_disch ~ "Mid-upper arm circumference (cm)",
+      whz_disch ~ "Weight-for-height z-score",
+      haz_disch ~ "Height-for-age z-score",
+      WAD_disch ~ "Weight absolute deficit (WAD) at discharge",
+      waz_fu90 ~ "WAZ at 3 months",
+      WAD_fu90 ~ "Weight absolute deficit (WAD) at 3 months",
+      Delta_WAZ_fu90 ~ "Change in WAZ (discharge → 3 months)",
+      Delta_WAD_fu90 ~ "Change in WAD (discharge → 3 months)",
+      albumin_disch ~ "Albumin",
+      haemoglobin_adj_disch ~ "Haemoglobin",
+      rbc_disch ~ "RBC", wbc_disch ~ "WBC", platelets_disch ~ "Platelets",
+      neutrophils_disch ~ "Neutrophils",
+      lymphocytes_disch ~ "Lymphocytes",
+      osinophils_disch ~ "Eosinophils",
+      monocytes_disch ~ "Monocytes",
+      basophils_disch ~ "Basophils",
+      MPO_abs ~ "Myeloperoxidase ng/ml",
+      AAT_abs ~ "Alpha-1-antitrypsin µg/ml",
+      CAL_abs ~ "Calprotectin µg/ml",
+      LPS_abs ~ "Lipopolysaccharides EU/ml"
+    ),
+    missing = "no"
+  ) %>%
+  modify_spanning_header(c("stat_1", "stat_2", "stat_3") ~ "**Nutritional group**") %>%
+  modify_header(
+    label ~ "**Variable**",
+    all_stat_cols() ~ "**{level}**\n(n={n})"
+  ) %>%
+  add_p(pvalue_fun = ~ pvalue_sci(.x, small_cutoff = 1e-4, sci_digits = 3, dec_digits = 4)) %>%
+  modify_header(p.value ~ "p-value") %>%
+  bold_labels() %>%
+  modify_caption("**Table 1. Participant Characteristics by nutritional status**") %>%
+  as_kable_extra(format = "html", table.attr = "style='width:101%;'") %>%
+  kable_classic(full_width = TRUE, font_size = 14, html_font = "sans-serif") %>%
+  row_spec(0, bold = TRUE) %>%
+  pack_rows("Anthropometric indices", 5, 13, label_row_css = "background-color: #666; color: #fff;") %>%
+  pack_rows("Haematology", 14, 23, label_row_css = "background-color: #666; color: #fff;") %>%
+  pack_rows("Systemic inflammation", 24, 36, label_row_css = "background-color: #666; color: #fff;") %>%
+  pack_rows("Growth mediators", 37, 49, label_row_css = "background-color: #666; color: #fff;") %>%
+  pack_rows("Enteric inflammation and permeability biomarkers", 50, 66, label_row_css = "background-color: #666; color: #fff;")
+
+get_tableS6
+```
+
+Identification of Systemic inflammation proteins associated with Growth (Adjusted)
+
+```{r Systemic inflammation proteins, fig.width=4, fig.height=8}
+
+ rm(list = ls())
+# 
+my_adat10<-read.csv(( "~/Dropbox/JN Fellowship/datasets/processed_datasets/my_adat10_26042025.csv"),
+                        na.strings = c("NA", NA, "","."), row.names = 1)
+
+which( colnames(my_adat10)=="OAS1" )#75
+which( colnames(my_adat10)== "IL10") #408
+
+which( colnames(my_adat10)=="ADCYAP1.0")
+which( colnames(my_adat10)=="GRM4")
+
+set.seed(111)
+chain.growth <- my_adat10 %>%
+  dplyr::select (record_id, selection,  categ_enrol, WAD_disch, Delta_WAD_fu90, waz_disch, sex_adm, site, discharge_age, categ_enrol, underweight_dis )
+
+
+chain.countdata <- my_adat10 [,c(1, 75:408)]
+
+
+
+SEM.results3.1=data.frame()
+
+age <- chain.growth$discharge_age
+sex <- chain.growth$sex_adm
+site <- chain.growth$site
+feeds <- chain.growth$feeds
+category <- chain.growth$categ_enrol
+#underweight_dis <- chain.growth$underweight_dis
+
+for(i in 2:ncol(chain.countdata)){
+  lm.fit3.1=lmerTest::lmer(formula=Delta_WAD_fu90  ~ chain.countdata[,i] + WAD_disch + sex + age +  feeds + (1|site), data = my_adat10)
+  summary(lm.fit3.1)
+  p.value = coef(summary(as(lm.fit3.1,"lmerModLmerTest")))[,5][2]
+  coefs=coef(summary(as(lm.fit3.1,"lmerModLmerTest")))[,1][2]
+  SE = coef(summary(as(lm.fit3.1,"lmerModLmerTest")))[,2][2]
+  lower = coefs-qnorm(0.975) * SE
+  upper = coefs+qnorm(0.975) * SE
+
+  results3.1=data.frame(protein=colnames(chain.countdata)[[i]],
+                    coefs=coefs,
+                    SE=SE,
+                    lower.95CI=lower,
+                    upper.95CI=upper,
+                    p.value=p.value
+                    )
+
+  SEM.results3.1=rbind(SEM.results3.1,results3.1)
+}
+
+SEM.results3.1$adj.p.value=p.adjust (SEM.results3.1$p.value,method="BH")
+SEM.results3.1$significant=ifelse(SEM.results3.1$adj.p.value<=0.05,T,F)
+write.csv(SEM.results3.1, here( "Manuscript", "Submission", "Nature Communications", "Resubmission", "Growth", "Accepted", "Editorial", "Systemic_inflammation_proteins.csv" ))
+SEM.results3.1 <- subset(SEM.results3.1, (significant == TRUE))
+SEM.results3.1 <-SEM.results3.1[order(SEM.results3.1$coefs),]
+SEM.results3.1$protein = reorder(SEM.results3.1$protein, SEM.results3.1$coefs)
+
+SEM_WAD_fu90_SI_Adj_forest_plt <- SEM.results3.1  %>% 
+ggplot(aes(y = protein)) +
+geom_point(aes(x=coefs), size= 0.35) +
+geom_errorbarh(aes(xmin = lower.95CI, xmax = upper.95CI),height = 0.25, linewidth = 0.25) +     
+geom_vline(xintercept = 0, linetype="dashed",  linewidth = 0.5 ) +   
+  theme_light()+   
+  labs(x="Estimates (95% CI)", 
+       y="Proteins", 
+    title = "Inflammation proteins") +   
+  theme(plot.title = element_text(hjust = 0.5, size = 11, face="bold", colour="darkblue"),
+        legend.position = c(0.95, 0.905),
+        axis.text.y= element_text(face="bold", colour="black",size=7),
+        text = element_text(size = 9.5, family = "bold", colour = "black"),
+        axis.text.x= element_text(face="bold", colour="black",size=7),
+        legend.title  =  element_text(face = "bold", colour ="black", size=6),  
+        axis.title.y = element_text(face = "bold", colour ="darkblue", size=9),
+        axis.title.x = element_text(face = "bold", colour ="darkblue", size=9),
+        axis.ticks.length=unit(0.05,"cm"),
+        panel.grid.minor = element_line(linewidth =  0.25, linetype = 'solid', colour = "white"),         
+        panel.grid.major = element_line(linewidth =  0.25, linetype = 'solid', colour = "grey95")) +   
+  ggsci::scale_color_jama() +   
+  theme(legend.position = "none")
+SEM_WAD_fu90_SI_Adj_forest_plt
+ggsave (here ("Manuscript", "Submission", "Nature Communications", "Resubmission", "Growth", "Accepted", "Editorial", "Inflammation_proteins_adj.png"), height = 3, width = 3.2)
+
+
+
+```
+
+Identification of inflammation cells associated with Growth (Adjusted)
+
+```{r Inflammation cells, fig.width=5, fig.height=8}
+
+rm(list = ls())
+# 
+my_adat10<-read.csv(( "~/Dropbox/JN Fellowship/datasets/processed_datasets/my_adat10_26042025.csv"),
+                        na.strings = c("NA", NA, "","."), row.names = 1)
+# 
+
+# 
+names(my_adat10)[names(my_adat10) == "osinophils_disch"] <- "eosinophils_disch"
+
+which( colnames(my_adat10)=="wbc_disch" )#339
+which( colnames(my_adat10)== "basophils_disch") #664
+
+set.seed(111)
+chain.growth <- my_adat10 %>%
+  dplyr::select (record_id, selection,  categ_enrol, WAD_disch, Delta_WAD_fu90, waz_disch, sex_adm, site, discharge_age, categ_enrol, underweight_dis )
+
+#################Hematology
+chain.countdata <- my_adat10 [,c(1, 18:24)] #69:72
+names(chain.countdata)[names(chain.countdata) == "wbc_disch"] <- "WBC"
+names(chain.countdata)[names(chain.countdata) == "platelets_disch"] <- "Platelets"
+names(chain.countdata)[names(chain.countdata) == "neutrophils_disch"] <- "Neutrophils"
+names(chain.countdata)[names(chain.countdata) == "lymphocytes_disch"] <- "Lymphocytes"
+names(chain.countdata)[names(chain.countdata) == "eosinophils_disch"] <- "Eosinophils"
+names(chain.countdata)[names(chain.countdata) == "monocytes_disch"] <- "Monocytes"
+names(chain.countdata)[names(chain.countdata) == "basophils_disch"] <- "Basophils"
+
+chain.countdata$Platelets=chain.countdata$Platelets+0.1
+chain.countdata$Eosinophils=chain.countdata$Eosinophils+0.1
+chain.countdata$Basophils=chain.countdata$Basophils+0.1
+chain.countdata <- chain.countdata %>% mutate_at(c(3,6,8), log)
+
+library("scales")
+chain.countdata <- chain.countdata %>% mutate_at(c(3:8), ~(datawizard::rescale(., to = c(0, 5)) %>% as.vector))
+
+SEM.results3.1=data.frame()
+
+age <- chain.growth$discharge_age
+sex <- chain.growth$sex_adm
+site <- chain.growth$site
+feeds <- chain.growth$feeds
+category <- chain.growth$categ_enrol
+
+
+for(i in 2:ncol(chain.countdata)){
+  lm.fit3.1=lmerTest::lmer(formula=Delta_WAD_fu90  ~ chain.countdata[,i] + WAD_disch + sex + age +  feeds + (1|site), data = my_adat10)
+  summary(lm.fit3.1)
+  p.value = coef(summary(as(lm.fit3.1,"lmerModLmerTest")))[,5][2]
+  coefs=coef(summary(as(lm.fit3.1,"lmerModLmerTest")))[,1][2]
+  SE = coef(summary(as(lm.fit3.1,"lmerModLmerTest")))[,2][2]
+  lower = coefs-qnorm(0.975) * SE
+  upper = coefs+qnorm(0.975) * SE
+
+  results3.1=data.frame(protein=colnames(chain.countdata)[[i]],
+                    coefs=coefs,
+                    SE=SE,
+                    lower.95CI=lower,
+                    upper.95CI=upper,
+                    p.value=p.value
+                    )
+
+  SEM.results3.1=rbind(SEM.results3.1,results3.1)
+}
+
+SEM.results3.1$adj.p.value=p.adjust (SEM.results3.1$p.value,method="BH")
+SEM.results3.1$significant=ifelse(SEM.results3.1$adj.p.value<=0.05,T,F)
+write.csv(SEM.results3.1, here( "Manuscript", "Submission", "Nature Communications", "Resubmission", "Growth", "Accepted", "Editorial", "Inflammation_cells.csv" ))
+SEM.results3.1$protein = reorder(SEM.results3.1$protein, SEM.results3.1$coefs)
+
+SEM_WAD_fu90_SI_Adj_forest_plt <- SEM.results3.1  %>% 
+ggplot(aes(y = protein)) +
+geom_point(aes(x=coefs), size= 0.35) +
+geom_errorbarh(aes(xmin = lower.95CI, xmax = upper.95CI),height = 0.25, linewidth = 0.25) +     
+geom_vline(xintercept = 0, linetype="dashed",  linewidth = 0.5 ) +   
+  theme_light()+   
+  labs(x="Estimates (95% CI)", 
+       y="Cells", 
+    title = "Inflammation associated cells") +   
+  theme(plot.title = element_text(hjust = 0.5, size = 11, face="bold", colour="darkblue"),
+        legend.position = c(0.95, 0.905),
+        axis.text.y= element_text(face="bold", colour="black",size=7),
+        text = element_text(size = 9.5, family = "bold", colour = "black"),
+        axis.text.x= element_text(face="bold", colour="black",size=7),
+        legend.title  =  element_text(face = "bold", colour ="black", size=6),  
+        axis.title.y = element_text(face = "bold", colour ="darkblue", size=9),
+        axis.title.x = element_text(face = "bold", colour ="darkblue", size=9),
+        axis.ticks.length=unit(0.05,"cm"),
+        panel.grid.minor = element_line(linewidth =  0.25, linetype = 'solid', colour = "white"),         
+        panel.grid.major = element_line(linewidth =  0.25, linetype = 'solid', colour = "grey95")) +   
+  ggsci::scale_color_jama() +   
+  theme(legend.position = "none")
+SEM_WAD_fu90_SI_Adj_forest_plt
+ggsave (here ("Manuscript", "Submission", "Nature Communications", "Resubmission", "Growth", "Inflammation_cell_adj.png"), height = 3, width = 3.2)
+#write.csv(SEM.results3.1, here( "Manuscript", "Submission", "Revision", "SEM_WAD_fu90_SI_Adj_plt_.csv" ))
+##dev.off()
+
+```
+
+Identification of Growth mediators associated with Growth (Adjusted)
+
+```{r Growth_mediators, fig.width=5, fig.height=8}
+
+ rm(list = ls())
+# 
+my_adat10<-read.csv(( "~/Dropbox/JN Fellowship/datasets/processed_datasets/my_adat10_26042025.csv"),
+                        na.strings = c("NA", NA, "","."), row.names = 1)
+# 
+which( colnames(my_adat10)=="ADCYAP1.0")
+which( colnames(my_adat10)=="GRM4")
+
+set.seed(111)
+chain.growth <- my_adat10 %>%
+  dplyr::select (record_id, selection,  categ_enrol, WAD_disch, Delta_WAD_fu90, waz_disch, sex_adm, site, discharge_age, categ_enrol, underweight_dis )
+
+
+
+chain.countdata <- my_adat10 [,c(1, 411:736)]
+
+SEM.results3.1=data.frame()
+
+age <- chain.growth$discharge_age
+sex <- chain.growth$sex_adm
+site <- chain.growth$site
+feeds <- chain.growth$feeds
+category <- chain.growth$categ_enrol
+
+
+for(i in 2:ncol(chain.countdata)){
+  lm.fit3.1=lmerTest::lmer(formula=Delta_WAD_fu90  ~ chain.countdata[,i] + WAD_disch + sex + age +  feeds + (1|site), data = my_adat10)
+  summary(lm.fit3.1)
+  p.value = coef(summary(as(lm.fit3.1,"lmerModLmerTest")))[,5][2]
+  coefs=coef(summary(as(lm.fit3.1,"lmerModLmerTest")))[,1][2]
+  SE = coef(summary(as(lm.fit3.1,"lmerModLmerTest")))[,2][2]
+  lower = coefs-qnorm(0.975) * SE
+  upper = coefs+qnorm(0.975) * SE
+
+  results3.1=data.frame(protein=colnames(chain.countdata)[[i]],
+                    coefs=coefs,
+                    SE=SE,
+                    lower.95CI=lower,
+                    upper.95CI=upper,
+                    p.value=p.value
+                    )
+
+  SEM.results3.1=rbind(SEM.results3.1,results3.1)
+}
+
+SEM.results3.1$adj.p.value=p.adjust (SEM.results3.1$p.value,method="BH")
+SEM.results3.1$significant=ifelse(SEM.results3.1$adj.p.value<=0.05,T,F)
+write.csv(SEM.results3.1, here( "Manuscript", "Submission", "Nature Communications", "Resubmission", "Growth", "Accepted", "Editorial", "Growth_mediators.csv" ))
+SEM.results3.1 <- subset(SEM.results3.1, (significant == TRUE))
+SEM.results3.1 <-SEM.results3.1[order(SEM.results3.1$coefs),]
+SEM.results3.1$protein = reorder(SEM.results3.1$protein, SEM.results3.1$coefs)
+
+SEM_WAD_fu90_SI_Adj_forest_plt <- SEM.results3.1  %>% 
+ggplot(aes(y = protein)) +
+geom_point(aes(x=coefs), size= 0.35) +
+geom_errorbarh(aes(xmin = lower.95CI, xmax = upper.95CI),height = 0.25, linewidth = 0.25) +     
+geom_vline(xintercept = 0, linetype="dashed",  linewidth = 0.5 ) +   
+  theme_light()+   
+  labs(x="Estimates (95% CI)", 
+       y="Proteins", 
+    title = "Growth mediators") +   
+  theme(plot.title = element_text(hjust = 0.5, size = 11, face="bold", colour="darkblue"),
+        legend.position = c(0.95, 0.905),
+        axis.text.y= element_text(face="bold", colour="black",size=7),
+        text = element_text(size = 9.5, family = "bold", colour = "black"),
+        axis.text.x= element_text(face="bold", colour="black",size=7),
+        legend.title  =  element_text(face = "bold", colour ="black", size=6),  
+        axis.title.y = element_text(face = "bold", colour ="darkblue", size=9),
+        axis.title.x = element_text(face = "bold", colour ="darkblue", size=9),
+        axis.ticks.length=unit(0.05,"cm"),
+        panel.grid.minor = element_line(linewidth =  0.25, linetype = 'solid', colour = "white"),         
+        panel.grid.major = element_line(linewidth =  0.25, linetype = 'solid', colour = "grey95")) +   
+  ggsci::scale_color_jama() +   
+  theme(legend.position = "none")
+SEM_WAD_fu90_SI_Adj_forest_plt
+ggsave (here ("Manuscript", "Submission", "Nature Communications", "Resubmission", "Growth", "Growth_mediators.png"), height = 5, width = 3)
+#write.csv(SEM.results3.1, here( "Manuscript", "Submission", "Revision", "SEM_WAD_fu90_SI_Adj_plt_.csv" ))
+##dev.off()
+
+```
+
+Biomarkers of enteric dysfunction and Growth (Adjusted)
+
+```{r Enteric dysfunction, fig.width=5, fig.height=8}
+
+rm(list = ls())
+# # 
+my_adat10<-read.csv(( "~/Dropbox/JN Fellowship/datasets/processed_datasets/my_adat10_26042025.csv"),
+                        na.strings = c("NA", NA, "","."), row.names = 1)
+
+
+set.seed(111)
+chain.growth <- my_adat10 %>%
+  dplyr::select (record_id, selection,  categ_enrol, WAD_disch, Delta_WAD_fu90, waz_disch, sex_adm, site, discharge_age, categ_enrol, underweight_dis )
+
+which( colnames(my_adat10)=="MPO" )#339
+which( colnames(my_adat10)== "LPS") #664
+which( colnames(my_adat10)== "FABP2") #664
+which( colnames(my_adat10)== "RBP4") #664
+chain.countdata <- my_adat10 [,c(1, 71:74, 177, 331, 749:759)] #69:72
+
+names(chain.countdata)[names(chain.countdata) == "MPO"] <- "MPO_f"
+names(chain.countdata)[names(chain.countdata) == "AAT"] <- "AAT_f"
+names(chain.countdata)[names(chain.countdata) == "CAL"] <- "CAL_f"
+names(chain.countdata)[names(chain.countdata) == "LPS"] <- "LPS_p"
+names(chain.countdata)[names(chain.countdata) == "FABP2"] <- "FABP2_p"
+names(chain.countdata)[names(chain.countdata) == "ZO1"] <- "ZO-1_p"
+names(chain.countdata)[names(chain.countdata) == "OCLN"] <- "OCLN_p"
+names(chain.countdata)[names(chain.countdata) == "CLD1"] <- "CLD1_p"
+names(chain.countdata)[names(chain.countdata) == "CDH1"] <- "CDH1_p"
+names(chain.countdata)[names(chain.countdata) == "JAMA"] <- "JAM-A_p"
+names(chain.countdata)[names(chain.countdata) == "DAO"] <- "DAO_p"
+names(chain.countdata)[names(chain.countdata) == "DSG3"] <- "DSG3_p"
+names(chain.countdata)[names(chain.countdata) == "HPT"] <- "HPT_p"
+names(chain.countdata)[names(chain.countdata) == "DEFA5"] <- "DEFA5_p"
+names(chain.countdata)[names(chain.countdata) == "REG3A"] <- "REG3A_p"
+names(chain.countdata)[names(chain.countdata) == "PD_L2"] <- "PD-L2_p"
+names(chain.countdata)[names(chain.countdata) == "RBP4"] <- "RBP4_p"
+
+
+SEM.results3.1=data.frame()
+
+age <- chain.growth$discharge_age
+sex <- chain.growth$sex_adm
+site <- chain.growth$site
+feeds <- chain.growth$feeds
+category <- chain.growth$categ_enrol
+
+for(i in 2:ncol(chain.countdata)){
+  lm.fit3.1=lmerTest::lmer(formula=Delta_WAD_fu90  ~ chain.countdata[,i] + WAD_disch + sex + age +  feeds + (1|site), data = my_adat10)
+  summary(lm.fit3.1)
+  p.value = coef(summary(as(lm.fit3.1,"lmerModLmerTest")))[,5][2]
+  coefs=coef(summary(as(lm.fit3.1,"lmerModLmerTest")))[,1][2]
+  SE = coef(summary(as(lm.fit3.1,"lmerModLmerTest")))[,2][2]
+  lower = coefs-qnorm(0.975) * SE
+  upper = coefs+qnorm(0.975) * SE
+
+  results3.1=data.frame(protein=colnames(chain.countdata)[[i]],
+                    coefs=coefs,
+                    SE=SE,
+                    lower.95CI=lower,
+                    upper.95CI=upper,
+                    p.value=p.value
+                    )
+
+  SEM.results3.1=rbind(SEM.results3.1,results3.1)
+}
+
+SEM.results3.1$adj.p.value=p.adjust (SEM.results3.1$p.value,method="BH")
+SEM.results3.1$significant=ifelse(SEM.results3.1$adj.p.value<=0.05,T,F)
+write.csv(SEM.results3.1, here( "Manuscript", "Submission", "Nature Communications", "Resubmission", "Growth", "Accepted", "Editorial", "Enteric_dysfunction.csv"))
+SEM.results3.1$protein = reorder(SEM.results3.1$protein, SEM.results3.1$coefs)
+
+SEM_WAD_fu90_SI_Adj_forest_plt <- SEM.results3.1  %>% 
+ggplot(aes(y = protein)) +
+geom_point(aes(x=coefs), size= 0.35) +
+geom_errorbarh(aes(xmin = lower.95CI, xmax = upper.95CI),height = 0.25, linewidth = 0.25) +     
+geom_vline(xintercept = 0, linetype="dashed",  linewidth = 0.5 ) +   
+  theme_light()+   
+  labs(x="Estimates (95% CI)", 
+       y="Biomarker", 
+    title = "Enteric inflammation \n and permeability") +   
+  theme(plot.title = element_text(hjust = 0.5, size = 11, face="bold", colour="darkblue"),
+        legend.position = c(0.95, 0.905),
+        axis.text.y= element_text(face="bold", colour="black",size=8),
+        text = element_text(size = 9.5, family = "bold", colour = "black"),
+        axis.text.x= element_text(face="bold", colour="black",size=8),
+        legend.title  =  element_text(face = "bold", colour ="black", size=10),  
+        axis.title.y = element_text(face = "bold", colour ="darkblue", size=11),
+        axis.title.x = element_text(face = "bold", colour ="darkblue", size=8),
+        axis.ticks.length=unit(0.05,"cm"),
+        panel.grid.minor = element_line(linewidth =  0.25, linetype = 'solid', colour = "white"),         
+        panel.grid.major = element_line(linewidth =  0.25, linetype = 'solid', colour = "grey95")) +   
+  ggsci::scale_color_jama() +   
+  theme(legend.position = "none")
+SEM_WAD_fu90_SI_Adj_forest_plt
+ggsave (here ("Manuscript", "Submission", "Nature Communications", "Resubmission", "Growth", "Enteric_dysfunction1.png"), height = 5, width = 3)
+#write.csv(SEM.results3.1, here( "Manuscript", "Submission", "Revision", "SEM_WAD_fu90_SI_Adj_plt_.csv" ))
+##dev.off()
+
+```
+
+Identification of Socio-economic factors associated with Growth (Adjusted)
+
+```{r Socio-economic factors, fig.width=5, fig.height=8}
+
+ rm(list = ls())
+# 
+my_adat10<-read.csv(( "~/Dropbox/JN Fellowship/datasets/processed_datasets/my_adat10_26042025.csv"),
+                        na.strings = c("NA", NA, "","."), row.names = 1)
+# 
+
+which( colnames(my_adat10)=="nutritional" )#339
+which( colnames(my_adat10)== "acute") #664
+
+set.seed(111)
+chain.growth <- my_adat10 %>%
+  dplyr::select (record_id, selection,  categ_enrol, WAD_disch, Delta_WAD_fu90, waz_disch, sex_adm, site, discharge_age, categ_enrol, underweight_dis )
+
+
+#################Socio-economic factors#########
+  chain.countdata <- my_adat10 [,c(1, 66:70)] #69:72
+
+chain.countdata$nutritional=chain.countdata$nutritional+0.1
+chain.countdata <- chain.countdata %>% mutate_at(c(2), log)
+
+
+names(chain.countdata)[names(chain.countdata) == "acute"] <- "Clinical presentation"
+names(chain.countdata)[names(chain.countdata) == "underlying"] <- "Underlying chronic conditions"
+names(chain.countdata)[names(chain.countdata) == "nutritional"] <- "Age inappropriate nutrition"
+names(chain.countdata)[names(chain.countdata) == "ccs"] <- "Caregiver characteristics"
+names(chain.countdata)[names(chain.countdata) == "hhc"] <- "Household-level exposures"
+
+# ########
+
+
+SEM.results3.1=data.frame()
+
+age <- chain.growth$discharge_age
+sex <- chain.growth$sex_adm
+site <- chain.growth$site
+feeds <- chain.growth$feeds
+category <- chain.growth$categ_enrol
+
+for(i in 2:ncol(chain.countdata)){
+  lm.fit3.1=lmerTest::lmer(formula=Delta_WAD_fu90  ~ chain.countdata[,i] + WAD_disch + sex + age +  feeds + (1|site), data = my_adat10)
+  summary(lm.fit3.1)
+  p.value = coef(summary(as(lm.fit3.1,"lmerModLmerTest")))[,5][2]
+  coefs=coef(summary(as(lm.fit3.1,"lmerModLmerTest")))[,1][2]
+  SE = coef(summary(as(lm.fit3.1,"lmerModLmerTest")))[,2][2]
+  lower = coefs-qnorm(0.975) * SE
+  upper = coefs+qnorm(0.975) * SE
+
+  results3.1=data.frame(protein=colnames(chain.countdata)[[i]],
+                    coefs=coefs,
+                    SE=SE,
+                    lower.95CI=lower,
+                    upper.95CI=upper,
+                    p.value=p.value
+                    )
+
+  SEM.results3.1=rbind(SEM.results3.1,results3.1)
+}
+
+SEM.results3.1$adj.p.value=p.adjust (SEM.results3.1$p.value,method="BH")
+SEM.results3.1$significant=ifelse(SEM.results3.1$adj.p.value<=0.05,T,F)
+write.csv(SEM.results3.1, here( "Manuscript", "Submission", "Nature Communications", "Resubmission", "Growth", "Accepted", "Editorial", "Socio-economic.csv"))
+SEM.results3.1$protein = reorder(SEM.results3.1$protein, SEM.results3.1$coefs)
+
+SEM_WAD_fu90_SI_Adj_forest_plt <- SEM.results3.1  %>% 
+ggplot(aes(y = protein)) +
+geom_point(aes(x=coefs), size= 0.35) +
+geom_errorbarh(aes(xmin = lower.95CI, xmax = upper.95CI),height = 0.25, linewidth = 0.25) +     
+geom_vline(xintercept = 0, linetype="dashed",  linewidth = 0.5 ) +   
+  theme_light()+   
+  labs(x="Estimates (95% CI)", 
+       y="Characteristic", 
+    title = "Socio-economic factors") +   
+  theme(plot.title = element_text(hjust = 0.5, size = 11, face="bold", colour="darkblue"),
+        legend.position = c(0.95, 0.905),
+        axis.text.y= element_text(face="bold", colour="black",size=7),
+        text = element_text(size = 9.5, family = "bold", colour = "black"),
+        axis.text.x= element_text(face="bold", colour="black",size=7),
+        legend.title  =  element_text(face = "bold", colour ="black", size=6),  
+        axis.title.y = element_text(face = "bold", colour ="darkblue", size=9),
+        axis.title.x = element_text(face = "bold", colour ="darkblue", size=9),
+        axis.ticks.length=unit(0.05,"cm"),
+        panel.grid.minor = element_line(linewidth =  0.25, linetype = 'solid', colour = "white"),         
+        panel.grid.major = element_line(linewidth =  0.25, linetype = 'solid', colour = "grey95")) +   
+  ggsci::scale_color_jama() +   
+  theme(legend.position = "none")
+SEM_WAD_fu90_SI_Adj_forest_plt
+ggsave (here ("Manuscript", "Submission", "Nature Communications", "Resubmission", "Growth", "Socio-economic_factors_rev.png"), height = 3, width = 3.5)
+#write.csv(SEM.results3.1, here( "Manuscript", "Submission", "Revision", "SEM_WAD_fu90_SI_Adj_plt_.csv" ))
+##dev.off()
+
+```
+
+Box plots for EED biomarkers
+
+```{r Box plots for EED biomarkers}
+
+rm(list = ls())
+# # 
+my_adat10<-read.csv(( "~/Dropbox/JN Fellowship/datasets/processed_datasets/my_adat10_26042025.csv"),
+                        na.strings = c("NA", NA, "","."), row.names = 1)
+
+# MYELOPEROXIDASE
+A <- ggplot(my_adat10, aes(x = "", y = MPO_abs)) +
+  geom_boxplot(width = 0.25, alpha = 0.7) +
+  #theme_classic()+
+  geom_jitter(width = 0.1, alpha = 0.5, color = "black", size = 0.5) +  # Add dots (jittered)
+  scale_y_continuous(
+    trans = "log10",  # Log transformation to spread skewed data
+    breaks = c(0, 100, 500, 1000, 2000, 5000, 10000, 100000),  # Define specific y-axis breaks
+    # labels = c("0-100", "101-1000", "1001-10000", "10001-100000") # Custom labels
+  )+
+  scale_x_discrete(expand = c(0.1, 0.1)) +  # Remove space around x-axis
+  geom_hline(yintercept = 2000, linetype = "dotdash", color = "black", size = 0.3) +  # Dashed cutoff line
+  labs(y = "Conc. ng/ml", x = "MPO") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, size = 11, face="bold", colour="darkblue"),
+        legend.position = c(0.95, 0.905),
+        axis.text.y= element_text(face="bold", colour="black",size=7),
+        text = element_text(size = 9.5, family = "bold", colour = "black"),
+        axis.text.x= element_text(face="bold", colour="black",size=7),
+        legend.title  =  element_text(face = "bold", colour ="black", size=6),  
+        axis.title.y = element_text(face = "bold", colour ="darkblue", size=9),
+        axis.title.x = element_text(face = "bold", colour ="darkblue", size=9),
+        axis.ticks.length=unit(0.05,"cm"),
+        panel.grid.minor = element_line(linewidth =  0.25, linetype = 'solid', colour = "white"),         
+        panel.grid.major = element_line(linewidth =  0.25, linetype = 'solid', colour = "grey95")) +   
+  ggsci::scale_color_jama() +  
+  theme_classic()+
+  theme(legend.position = "none")
+  
+#CALPROTECTIN
+B <- ggplot(my_adat10, aes(x = "", y = CAL_abs)) +
+  geom_boxplot(width = 0.25, alpha = 0.7) +
+  #theme_classic()+
+  geom_jitter(width = 0.1, alpha = 0.5, color = "black", size = 0.5) +  # Add dots (jittered)
+  scale_y_continuous(
+    trans = "log10",  # Log transformation to spread skewed data
+    breaks = c(0, 50, 100, 250, 1000, 10000)  # Define specific y-axis breaks
+    # labels = c("0-100", "101-1000", "1001-10000", "10001-100000") # Custom labels
+  ) +
+  scale_x_discrete(expand = c(0.1, 0.1)) +  # Remove space around x-axis
+  geom_hline(yintercept = 250, linetype = "dotdash", color = "black", size = 0.3) +  #
+  labs(y = "Conc. (ug/ml)", x = "CAL") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, size = 11, face="bold", colour="darkblue"),
+        legend.position = c(0.95, 0.905),
+        axis.text.y= element_text(face="bold", colour="black",size=7),
+        text = element_text(size = 9.5, family = "bold", colour = "black"),
+        axis.text.x= element_text(face="bold", colour="black",size=7),
+        legend.title  =  element_text(face = "bold", colour ="black", size=6),  
+        axis.title.y = element_text(face = "bold", colour ="darkblue", size=9),
+        axis.title.x = element_text(face = "bold", colour ="darkblue", size=9),
+        axis.ticks.length=unit(0.05,"cm"),
+        panel.grid.minor = element_line(linewidth =  0.25, linetype = 'solid', colour = "white"),         
+        panel.grid.major = element_line(linewidth =  0.25, linetype = 'solid', colour = "grey95")) +   
+  ggsci::scale_color_jama() +  
+  theme_classic()+
+  theme(legend.position = "none")
+  
+#ALPHA-1-ANTITRYPSIN
+C <- ggplot(my_adat10, aes( x = "", y = AAT_abs)) +#x = as.factor(group_adm),
+  geom_boxplot(width = 0.25, alpha = 0.7) +
+  #theme_classic()+
+  geom_jitter(width = 0.1, alpha = 0.5, color = "black", size = 0.5) +  # Add dots (jittered)
+  scale_y_continuous(
+    trans = "log10",  # Log transformation to spread skewed data
+    breaks = c(0, 50, 100, 250, 500, 1000, 2000),  # Define specific y-axis breaks
+    # labels = c("0-100", "101-1000", "1001-10000", "10001-100000") # Custom labels
+  ) +
+  scale_x_discrete(expand = c(0.1, 0.1)) +  # Remove space around x-axis
+  geom_hline(yintercept = 270, linetype = "dotdash", color = "black", size = 0.3) +  #
+  labs(y = "Conc. ug/ml", x = "AAT") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, size = 11, face="bold", colour="darkblue"),
+        legend.position = c(0.95, 0.905),
+        axis.text.y= element_text(face="bold", colour="black",size=7),
+        text = element_text(size = 9.5, family = "bold", colour = "black"),
+        axis.text.x= element_text(face="bold", colour="black",size=7),
+        legend.title  =  element_text(face = "bold", colour ="black", size=6),  
+        axis.title.y = element_text(face = "bold", colour ="darkblue", size=9),
+        axis.title.x = element_text(face = "bold", colour ="darkblue", size=9),
+        axis.ticks.length=unit(0.05,"cm"),
+        panel.grid.minor = element_line(linewidth =  0.25, linetype = 'solid', colour = "white"),         
+        panel.grid.major = element_line(linewidth =  0.25, linetype = 'solid', colour = "grey95")) +   
+  ggsci::scale_color_jama() +  
+  theme_classic()+
+  theme(legend.position = "none")
+  
+#LIPOPOLYSACCHARIDE
+D <- ggplot(my_adat10, aes( x = "", y = LPS_abs)) +#x = as.factor(group_adm),
+  geom_boxplot(width = 0.25, alpha = 0.7) +
+  #theme_classic()+
+  geom_jitter(width = 0.1, alpha = 0.5, color = "black", size = 0.5) +  # Add dots (jittered)
+  scale_y_continuous(
+    trans = "log10",  # Log transformation to spread skewed data
+    breaks = c(1, 2.5, 5, 10, 25, 50),  # Define specific y-axis breaks
+    # labels = c("0-100", "101-1000", "1001-10000", "10001-100000") # Custom labels
+  ) +
+  scale_x_discrete(expand = c(0.1, 0.1)) +  # Remove space around x-axis
+  labs(y = "Conc. EU/ml", x = "LPS") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, size = 11, face="bold", colour="darkblue"),
+        legend.position = c(0.95, 0.905),
+        axis.text.y= element_text(face="bold", colour="black",size=7),
+        text = element_text(size = 9.5, family = "bold", colour = "black"),
+        axis.text.x= element_text(face="bold", colour="black",size=7),
+        legend.title  =  element_text(face = "bold", colour ="black", size=6),  
+        axis.title.y = element_text(face = "bold", colour ="darkblue", size=9),
+        axis.title.x = element_text(face = "bold", colour ="darkblue", size=9),
+        axis.ticks.length=unit(0.05,"cm"),
+        panel.grid.minor = element_line(linewidth =  0.25, linetype = 'solid', colour = "white"),         
+        panel.grid.major = element_line(linewidth =  0.25, linetype = 'solid', colour = "grey95")) +   
+  ggsci::scale_color_jama() +  
+  theme_classic()+
+  theme(legend.position = "none")
+  
+
+# Combine plots into a grid
+combined_plot <- ggarrange(A, B, C, D, 
+          ncol = 2, nrow = 2,  # 2x2 grid
+          labels = c("E", "F", "G", "H"),  # Optional labels
+          common.legend = TRUE,  # Use a common legend (if applicable)
+          legend = "bottom")  # Position of legend
+
+# Save combined plot
+ggsave(
+  filename = here( "Manuscript", "Submission", "Nature Communications", "Resubmission", "Growth", "Enteric_dysfunction_square1.jpeg"),
+  plot = combined_plot,
+  width = 3, height = 6, units = "in", dpi = 600
+)
+
+```
+
+EXPLORATORY FACTOR ANALYSIS for Enteric Dysfunction markers
+
+```{r SEM data prep and EFA}
+knitr::opts_chunk$set(echo = TRUE)
+
+rm(list = ls())
+# # 
+my_adat10<-read.csv(( "~/Dropbox/JN Fellowship/datasets/processed_datasets/my_adat10_26042025.csv"),
+                        na.strings = c("NA", NA, "","."), row.names = 1)
+set.seed(111)
+
+SEM_SI_GM <- my_adat10  
+
+SEM_SI_GM<- SEM_SI_GM %>% dplyr::mutate(sex_adm=recode(sex_adm, 
+                                                                          "Male"= 0,
+                                                                          "Female" = 1
+                                                                      ))
+
+
+SEM_SI_GM <- SEM_SI_GM %>% mutate_at("discharge_age", ~(scale(.) %>% as.vector))
+
+names(SEM_SI_GM)[names(SEM_SI_GM) == "sex_adm"] <- "Sex"
+names(SEM_SI_GM)[names(SEM_SI_GM) == "discharge_age"] <- "Age"
+names(SEM_SI_GM)[names(SEM_SI_GM) == "feeds"] <- "Feeds"
+
+#EXPLORE
+SEMEED <- SEM_SI_GM  %>% 
+  dplyr::select (CAL, MPO,  AAT)
+fit_EED <- efa(data = SEMEED , rotation="oblimin", nfactors = 1)
+summary(fit_EED)
+
+
+```
+
+The full STRUCTURAL EQUATION MODEL - Figure 5
+
+```{r SEM_full, fig.width=10, fig.height= 30}
+
+rm(list = ls())
+# # 
+my_adat10<-read.csv(( "~/Dropbox/JN Fellowship/datasets/processed_datasets/my_adat10_26042025.csv"),
+                        na.strings = c("NA", NA, "","."), row.names = 1)
+
+SEM_SI_GM <- my_adat10
+
+
+set.seed(111)
+
+res.pcaPGM <- prcomp(SEM_SI_GM %>% 
+  dplyr:: select (THBS4,	ACAN,	IGFBP6,	IGFBP3,	IGF1, PYY, GCG )) 
+print(res.pcaPGM)
+summary(res.pcaPGM)
+eig.val <- get_eigenvalue(res.pcaPGM)
+eig.val
+fviz.eig <- fviz_eig(res.pcaPGM, addlabels = TRUE, ylim = c(0, 45), title = "Growth Mediators Screeplot")+
+  theme(text = element_text(size = 15, face = "bold", colour = "black"),
+        axis.title = element_text(size = 15),
+        axis.text = element_text(size = 15))
+fviz.eig
+ggsave (here ("Manuscript", "Submission", "Nature Communications", "Resubmission", "Growth", "fviz.eig_PGM_DIM_Adjusted.pdf"), height = 7, width = 7)
+dev.off()
+var <- get_pca_var(res.pcaPGM)#: Extract the results for variables.
+var
+
+fviz_pca_var1 <- fviz_pca_var(res.pcaPGM,  axes = c(1, 2), label = "var", col.var = "blue", labelsize = 6, repel = TRUE, title = "GM Biplot for components 1 and 2") +
+  theme(text = element_text(size = 15, face = "bold", colour = "black"),
+        axis.title = element_text(size = 15),
+        axis.text = element_text(size = 15))
+fviz_pca_var1
+ggsave (here ("Manuscript", "Submission", "Nature Communications", "Resubmission", "Growth", "fviz.pca_PGM_DIM_Adjusted.pdf"), height = 7, width = 7)
+dev.off()
+head(var$cos2)
+
+ind <- get_pca_ind(res.pcaPGM)# Extract the results for individuals 
+ind
+head(ind$coord)
+dim(ind$coord)
+library("corrplot")
+pdf (here ("Manuscript", "Submission", "Nature Communications", "Resubmission", "Growth", "cor_PGM_DIM1_Adjusted.pdf"), height = 7, width = 7)
+corrplot1 <-corrplot(var$cos2, is.corr=FALSE,  tl.cex = 2.0,  tl.col = "darkred")#  tl.cex = 2.0,  tl.col = "darkred"
+dev.off()
+fviz_cos21 <-fviz_cos2(res.pcaPGM, choice = "var", axes = 1) + 
+theme(text = element_text(size = 15, face = "bold", colour = "black"),
+        axis.title = element_text(size = 15),
+        axis.text = element_text(size = 15))
+fviz_cos21
+ggsave (here ("Manuscript", "Submission", "Nature Communications", "Resubmission","Growth", "fviz.cos2_PGM_DIM_1_Adjusted.pdf"), height = 7, width = 7)
+dev.off()
+
+fviz_cos22<- fviz_cos2(res.pcaPGM, choice = "var", axes = 2) + 
+theme(text = element_text(size = 15, face = "bold", colour = "black"),
+        axis.title = element_text(size = 15),
+        axis.text = element_text(size = 15))
+
+fviz_cos22
+ggsave (here ("Manuscript", "Submission", "Nature Communications", "Resubmission", "Growth", "fviz.cos2_PGM_DIM_2_Adjusted.pdf"), height = 7, width = 7)
+dev.off()
+
+fviz_cos23 <- fviz_cos2(res.pcaPGM, choice = "var", axes = 3) + #to check the contribution of individual variable in the contribution to the dimensions - 1 = dim 1, 2 =dim 2
+theme(text = element_text(size = 15, face = "bold", colour = "black"),
+        axis.title = element_text(size = 15),
+        axis.text = element_text(size = 15))
+
+fviz_cos23
+ggsave (here ("Manuscript", "Submission", "Nature Communications", "Resubmission", "Growth", "fviz.cos2_PGM_DIM_3_Adjusted.pdf"), height = 7, width = 7)
+dev.off()
+
+Loadings <- as.data.frame(res.pcaPGM$rotation[,1:2])
+
+
+SEM_SI_GM=data.frame(SEM_SI_GM,ind$coord)
+#tail(names(SEM_SI_GM),15)
+# 
+# 
+names(SEM_SI_GM)[names(SEM_SI_GM) == "Dim.1"] <- "GM1"
+names(SEM_SI_GM)[names(SEM_SI_GM) == "Dim.2"] <- "GM2"
+names(SEM_SI_GM)[names(SEM_SI_GM) == "Dim.3"] <- "GM3"
+names(SEM_SI_GM)[names(SEM_SI_GM) == "Dim.4"] <- "GM4"
+names(SEM_SI_GM)[names(SEM_SI_GM) == "Dim.5"] <- "GM5"
+names(SEM_SI_GM)[names(SEM_SI_GM) == "Dim.6"] <- "GM6"
+names(SEM_SI_GM)[names(SEM_SI_GM) == "Dim.7"] <- "GM7"
+
+
+set.seed(111)
+
+res.pcaGSI <- prcomp(SEM_SI_GM %>%
+  dplyr:: select ( TNF, IFNG, IL1B, IL10, CRP, PLA2G2A, LBP , sCD14))# 
+print(res.pcaGSI)
+summary(res.pcaGSI)
+eig.val <- get_eigenvalue(res.pcaGSI)
+eig.val
+fviz.eig2 <- fviz_eig(res.pcaGSI, addlabels = TRUE, ylim = c(0, 35), title = "Systemic Inflammation Screeplot")+
+  theme(text = element_text(size = 15, face = "bold", colour = "black"),
+        axis.title = element_text(size = 15),
+        axis.text = element_text(size = 15))
+fviz.eig2
+ggsave (here ("Manuscript", "Submission", "Nature Communications", "Resubmission", "Growth", "fviz.eig_GSI_DIM_1_Adjusted.pdf"), height = 7, width = 7)
+dev.off()
+var <- get_pca_var(res.pcaGSI)
+var
+
+fviz_pca_var2 <- fviz_pca_var(res.pcaGSI, axes = c(1, 2), label = "var", col.var = "blue", labelsize = 6, repel = TRUE, title = "SI Biplot for components 1 and 2") +
+  theme(text = element_text(size = 15, face = "bold", colour = "black"),
+        axis.title = element_text(size = 15),
+        axis.text = element_text(size = 15))
+
+fviz_pca_var2
+ggsave (here ("Manuscript", "Submission", "Nature Communications", "Resubmission", "Growth", "fviz.pca_GSI_DIM_1_Adjusted.pdf"), height = 7, width = 7)
+dev.off()
+head(var$cos2)
+
+ind <- get_pca_ind(res.pcaGSI)
+ind
+head(ind$coord)
+#View(ind$coord)
+dim(ind$coord)
+library("corrplot")
+pdf ((here ("Manuscript", "Submission", "Nature Communications", "Resubmission", "Growth", "cor_GSI_DIM_1_Adjusted.pdf")))
+corrplot(var$cos2, is.corr=FALSE,  tl.cex = 2.0,  tl.col = "darkred")
+dev.off()
+fviz_cos22<- fviz_cos2(res.pcaGSI, choice = "var", axes = 1) +
+  theme(text = element_text(size = 15, face = "bold", colour = "black"),
+        axis.title = element_text(size = 15),
+        axis.text = element_text(size = 15))#to check the contribution of individual variable in the contribution to the dimensions - 1 = dim 1, 2 =dim 2
+
+fviz_cos22
+ggsave (here ("Manuscript", "Submission", "Nature Communications", "Resubmission", "Growth", "fviz.cos2_GSI_DIM_1_Adjusted.pdf"), height = 7, width = 7)
+dev.off()
+
+fviz_cos23 <-fviz_cos2(res.pcaGSI, choice = "var", axes = 2) +
+  theme(text = element_text(size = 15, face = "bold", colour = "black"),
+        axis.title = element_text(size = 15),
+        axis.text = element_text(size = 15))#to check the contribution of individual variable in the contribution to the dimensions - 1 = dim 1, 2 =dim 2
+
+fviz_cos23
+ggsave (here ("Manuscript", "Submission", "Nature Communications", "Resubmission", "Growth", "fviz.cos2_GSI_DIM_2_Adjusted.pdf"), height = 7, width = 7)
+dev.off()
+
+fviz_cos24 <- fviz_cos2(res.pcaGSI, choice = "var", axes = 3) +
+  theme(text = element_text(size = 15, face = "bold", colour = "black"),
+        axis.title = element_text(size = 15),
+        axis.text = element_text(size = 15))#to check the contribution of individual variable in the contribution to the dimensions - 1 = dim 1, 2 =dim 2
+
+fviz_cos24
+ggsave (here ("Manuscript", "Submission", "Nature Communications", "Resubmission", "Growth", "fviz.cos2_GSI_DIM_3_Adjusted.pdf"), height = 7, width = 7)
+dev.off()
+
+Loadings <- as.data.frame(res.pcaGSI$rotation[,1:2])
+
+SEM_SI_GM=data.frame(SEM_SI_GM,ind$coord)
+# #View(data)
+tail(names(SEM_SI_GM),15)
+#
+
+names(SEM_SI_GM)[names(SEM_SI_GM) == "Dim.1"] <- "SI1"
+names(SEM_SI_GM)[names(SEM_SI_GM) == "Dim.2"] <- "SI2"
+names(SEM_SI_GM)[names(SEM_SI_GM) == "Dim.3"] <- "SI3"
+names(SEM_SI_GM)[names(SEM_SI_GM) == "Dim.4"] <- "SI4"
+names(SEM_SI_GM)[names(SEM_SI_GM) == "Dim.5"] <- "SI5"
+names(SEM_SI_GM)[names(SEM_SI_GM) == "Dim.6"] <- "SI6"
+names(SEM_SI_GM)[names(SEM_SI_GM) == "Dim.7"] <- "SI7"
+
+SEM_SI_GM <- SEM_SI_GM %>% mutate_at("discharge_age", ~(scale(.) %>% as.vector))
+names(SEM_SI_GM)[names(SEM_SI_GM) == "sex_adm"] <- "Sex"
+names(SEM_SI_GM)[names(SEM_SI_GM) == "discharge_age"] <- "Age"
+names(SEM_SI_GM)[names(SEM_SI_GM) == "feeds"] <- "Feeds"
+
+SEM_SI_GM$WAD_disch  <- SEM_SI_GM$WAD_disch * -1
+
+Delta_WAD <- '
+# Measurement model 
+ED =~  CAL + MPO + AAT
+# Regressions
+GM1 ~ SI1 + SI2 +  SI3 +  ED + LPS + Age + Sex+ Feeds + nutritional + hhc + underlying + acute + ccs 
+GM2 ~  SI1 + SI2 +  SI3 +  ED + LPS  + Age + Sex+ Feeds + nutritional + hhc + underlying + acute + ccs 
+#GM3 ~ SI1 + SI2 +  SI3 +  ED + LPS +  Age + Sex+ Feeds + nutritional + hhc + underlying + acute + ccs  
+SI1 ~   ED + LPS + Age + Sex+ Feeds + nutritional + hhc + underlying + acute + ccs  
+SI2 ~    ED + LPS + Age + Sex+ Feeds + nutritional + hhc + underlying + acute + ccs 
+SI3 ~    ED + LPS + Age + Sex+ Feeds + nutritional + hhc + underlying + acute + ccs 
+ED  ~   LPS + Age + Sex+ Feeds + nutritional + hhc + underlying + acute + ccs 
+LPS  ~   Age + Sex+ Feeds + nutritional + hhc + underlying + acute + ccs 
+WAD_disch  ~     GM1 + GM2 +  SI1 + SI2 + SI3 +   ED + LPS +  Age + Sex + Feeds + nutritional + hhc + underlying + ccs + acute  
+Delta_WAD_fu90  ~ WAD_disch + GM1 + GM2 +   SI1 + SI2 + SI3 +   ED + LPS  + Age + Sex +  Feeds + nutritional + hhc + underlying + ccs + acute 
+
+#Covariances
+	'
+sem_waz_fu90 <- sem(Delta_WAD, data=SEM_SI_GM, missing = "ml", bounds = "standard") #, cluster = "site"
+summary(sem_waz_fu90, standardized=TRUE, fit.measures=TRUE)
+
+varTable(sem_waz_fu90)
+modindices(sem_waz_fu90)
+
+fit_measures <- as.data.frame(fitMeasures(sem_waz_fu90))
+fit_measures <- tibble::rownames_to_column(fit_measures, "fitindices")
+sem_waz_fu90_data <- parameterEstimates(sem_waz_fu90)
+sem_waz_fu90_data <- rbindlist(lapply(list(sem_waz_fu90_data, fit_measures), setDT, keep.rownames = FALSE), fill=TRUE )
+
+sem_waz_fu90_data <- sem_waz_fu90_data %>% dplyr::mutate(lhs = dplyr::recode(lhs, "WAD_disch" = "WAD at Discharge"))
+sem_waz_fu90_data <- sem_waz_fu90_data %>% dplyr::mutate(rhs = dplyr::recode(rhs, "WAD_disch" = "WAD at Discharge"))
+
+sem_waz_fu90
+
+varTable(sem_waz_fu90)
+modindices(sem_waz_fu90)
+
+varTablesem_waz_fu90 <- as.data.frame(varTable(sem_waz_fu90))
+modindicessem_waz_fu90 <- as.data.frame(modindices(sem_waz_fu90))
+
+write.csv(varTablesem_waz_fu90, here("Manuscript", "Submission", "Nature Communications", "Resubmission", "Growth", "Accepted", "Editorial", "FINAL_varTablesem_waz_fu90_overall_ED_site.csv"))
+write.csv(modindicessem_waz_fu90, here("Manuscript", "Submission", "Nature Communications", "Resubmission", "Growth", "Accepted", "Editorial",  "FINAL_modindicessem_waz_fu90_overall_ED_site.csv"))
+write.csv(sem_waz_fu90_data, here("Manuscript", "Submission", "Nature Communications", "Resubmission", "Growth", "Accepted", "Editorial", "FINAL_sem_waz_fu90_data_overall_ED_site.csv"))
+
+waz_fu90_data <- sem_waz_fu90_data %>% dplyr::filter(op=="~")
+waz_fu90_data <- waz_fu90_data %>% dplyr::select(-op)
+waz_fu90_data1 <- unite(waz_fu90_data, col="regr", c("lhs", "rhs"), sep = " ~ ")
+waz_fu90_data1 <- waz_fu90_data1 %>% dplyr::mutate(significant = if_else(pvalue <= 0.05, "Yes", "No"))
+
+levels_order <- waz_fu90_data1$regr
+waz_fu90_data1$regr <- factor(waz_fu90_data1$regr, levels = levels_order)
+
+waz_fu90_data1 <- subset(waz_fu90_data1, (pvalue <= 0.05 ))
+
+waz_fu90_data_forest_plt <- waz_fu90_data1  %>%  
+  ggplot(aes(y = fct_rev(regr) )) + #color = significant
+  geom_point(aes(x=est), size= 0.35) +
+  geom_errorbarh(aes(xmin = ci.lower, xmax = ci.upper),height = 0.25, linewidth = 0.25) +     
+  geom_vline(xintercept = 0, linetype="dashed",  linewidth = 0.5 ) +  
+  xlim(-0.7, 1.10) +
+  theme_light()+   
+  scale_color_manual(values = c("black","red")) +
+  labs(x="Estimates (95% CI)", 
+       y="Regressions", 
+       title = "") 
+waz_fu90_data_forest_plt +
+theme(plot.title = element_text(hjust = 0.5, size = 14, face="bold", colour="darkblue")+
+          theme (legend.position = c(0.95, 0.905)) +
+          theme (axis.text.y= element_text(face="bold", colour="black",size=7.5)) +
+          theme (text = element_text(size = 9.5, family = "bold", colour = "black"))+
+          theme (axis.text.x= element_text(face="bold", colour="black",size=10)) +
+          theme( legend.title  =  element_text(face = "bold", colour ="black", size=5))+  
+          theme (axis.title.y = element_text(face = "bold", colour ="darkblue", size=12))+
+          theme( axis.title.x = element_text(face = "bold", colour ="darkblue", size=12))+
+          theme (axis.ticks.length=unit(0.05,"cm"))+
+          theme ( panel.grid.minor = element_line(linewidth =  0.25, linetype = 'solid', colour = "white"))+         
+          theme (panel.grid.major = element_line(linewidth =  0.25, linetype = 'solid', colour = "grey95"))) +   
+  theme(legend.position = "none")
+
+
+waz_fu90_data_forest_plt
+
+ggsave (here ("Manuscript", "Submission", "Nature Communications", "Resubmission", "Growth", "Adjusted_DeltaWAD_fu90_forest.png"), height = 7, width = 5)
+
+
+```
+
+Figure 2D
+
+```{r, Fig 2D Correlation plot}
+rm(list = ls())
+# # 
+my_adat10<-read.csv(( "~/Dropbox/JN Fellowship/datasets/processed_datasets/my_adat10_26042025.csv"),
+                        na.strings = c("NA", NA, "","."), row.names = 1)
+
+Sys_Corr1<- my_adat10 %>%
+  dplyr::select (Delta_WAD_fu90, CREG1, IGFBP2, GDF15, PYY, GCG, IGFBP6, GDF11, CCL21, ACAN, C8G, IL1RAP, ATP1B1, IGF2, THBS4, IGFBP3, IGF1, GHR, CFHR5) 
+# 
+ names(Sys_Corr1)[names(Sys_Corr1) == "Delta_WAD_fu90"] <- "DWAD \n Day90"
+# names(EED_Corr1)[names(EED_Corr1) == "CAL"] <- "CAL.f"
+# names(EED_Corr1)[names(EED_Corr1) == "MPO"] <- "MPO.f"
+
+
+set.seed(42)
+library(corrgram)
+
+# This panel adds significance starts, or NS for not significant
+panel.signif <-  function (x, y, corr = NULL, col.regions, digits = 2, cex.cor, 
+                           ...) {
+  usr <- par("usr")
+  on.exit(par(usr))
+  par(usr = c(0, 1, 0, 1))
+  results <- cor.test(x, y, alternative = "two.sided")
+  est <- results$p.value
+  stars <- ifelse(est < 5e-4, "***", 
+                  ifelse(est < 5e-3, "**", 
+                         ifelse(est < 5e-2, "*", "-")))
+  #cex.cor <- 0.4/strwidth(stars)
+  cex.cor <- 1.5
+  text(0.5, 0.5, stars, cex = cex.cor)
+}
+
+# This panel combines edits the "shade" panel from the package
+# to overlay the correlation value as requested
+panel.shadeNtext <- function (x, y, corr = NULL, col.regions, ...) 
+{
+  if (is.null(corr)) 
+    corr <- cor(x, y, use = "pair")
+  ncol <- 14
+  pal <- col.regions(ncol)
+  col.ind <- as.numeric(cut(corr, breaks = seq(from = -1, to = 1, 
+                                               length = ncol + 1), include.lowest = TRUE))
+  usr <- par("usr")
+  rect(usr[1], usr[3], usr[2], usr[4], col = pal[col.ind], 
+       border = NA)
+  box(col = "lightgray")
+  on.exit(par(usr))
+  par(usr = c(0, 1, 0, 1))
+  r <- formatC(corr, digits = 2, format = "f")
+  #cex.cor <- .8/strwidth("-X.xx")
+  cex.cor <- 0.7
+  text(0.5, 0.5, r, cex = cex.cor)
+}
+
+out_dir <- "~/Dropbox/JN Fellowship/Manuscript/Submission/Nature Communications/Resubmission/Growth/Data"
+#out_dir <- file.path("Resubmission", "Growth", "Data")
+# full output file path
+out_file <- file.path(out_dir, "Systemic_corrgram.png")
+# ----- plot -----
+png(filename = out_file, width = 8, height = 8, units = "in", res = 1200)
+
+# Define a Brewer-like RdBu palette
+colfunc <- colorRampPalette(c("#67001F","#B2182B","#D6604D","#F4A582","#FDDBC7",
+                              "#F7F7F7",
+                              "#D1E5F0","#92C5DE","#4393C3","#2166AC","#053061"))
+ncol_bands <- 14
+
+corrgram(Sys_Corr1, type = "data", 
+         lower.panel = panel.shadeNtext, 
+         upper.panel = panel.signif, 
+         order = FALSE,
+  col.regions = colfunc
+)
+
+## Before plotting, keep the legend panel narrow:
+## (adjust 0.08 → thinner, 0.12 → wider)
+layout(matrix(c(1, 2), nrow = 1), widths = c(1, 0.08))
+
+# ----- (2) Color scale legend for r -----
+# Keep the font the same (cex.axis / cex.lab), just trim margins
+#par(mar = c(2, 0.3, 1, 3), cex.axis = 1, cex.lab = 1)
+
+plot.new()
+
+# Draw the strip within a narrow x-range so it looks slim
+legend_width <- 0.35  # fraction of this panel’s width used for the color bar
+plot.window(xlim = c(0, legend_width), ylim = c(-1, 1), xaxs = "i", yaxs = "i")
+
+# Banded legend to match corrgram tiles
+breaks <- seq(-1, 1, length.out = ncol_bands + 1)
+pal    <- colfunc(ncol_bands)
+
+for (i in seq_len(ncol_bands)) {
+  rect(0, breaks[i], legend_width, breaks[i + 1], col = pal[i], border = NA)
+}
+
+# Optional thin outline around the strip
+rect(0, -1, legend_width, 1, border = "grey60")
+
+# Axis at the right edge of this (narrow) panel; font size unchanged
+axis(4, at = seq(-1, 1, by = 0.5), las = 1)
+mtext("Correlation (r)", side = 4, line = 2.2, cex = 0.9)
+
+dev.off()
+
+
+
+
+```
+
+
+
+
+```{r, Correlation plot}
+rm(list = ls())
+# # 
+my_adat10<-read.csv(( "~/Dropbox/JN Fellowship/datasets/processed_datasets/my_adat10_26042025.csv"),
+                        na.strings = c("NA", NA, "","."), row.names = 1)
+
+EED_Corr1<- my_adat10 %>%
+  dplyr::select (FABP2, ZO1, OCLN, CLD1, CDH1, JAMA, DAO, DSG3,HPT, MPO, CAL, AAT, LPS, sCD14, LBP, DEFA5, REG3A, PD_L2, RBP4) 
+# 
+names(EED_Corr1)[names(EED_Corr1) == "AAT"] <- "AAT.f"
+names(EED_Corr1)[names(EED_Corr1) == "CAL"] <- "CAL.f"
+names(EED_Corr1)[names(EED_Corr1) == "MPO"] <- "MPO.f"
+
+
+set.seed(42)
+library(corrgram)
+
+# This panel adds significance starts, or NS for not significant
+panel.signif <-  function (x, y, corr = NULL, col.regions, digits = 2, cex.cor, 
+                           ...) {
+  usr <- par("usr")
+  on.exit(par(usr))
+  par(usr = c(0, 1, 0, 1))
+  results <- cor.test(x, y, alternative = "two.sided")
+  est <- results$p.value
+  stars <- ifelse(est < 5e-4, "***", 
+                  ifelse(est < 5e-3, "**", 
+                         ifelse(est < 5e-2, "*", "-")))
+  #cex.cor <- 0.4/strwidth(stars)
+  cex.cor <- 1.5
+  text(0.5, 0.5, stars, cex = cex.cor)
+}
+
+# This panel combines edits the "shade" panel from the package
+# to overlay the correlation value as requested
+panel.shadeNtext <- function (x, y, corr = NULL, col.regions, ...) 
+{
+  if (is.null(corr)) 
+    corr <- cor(x, y, use = "pair")
+  ncol <- 14
+  pal <- col.regions(ncol)
+  col.ind <- as.numeric(cut(corr, breaks = seq(from = -1, to = 1, 
+                                               length = ncol + 1), include.lowest = TRUE))
+  usr <- par("usr")
+  rect(usr[1], usr[3], usr[2], usr[4], col = pal[col.ind], 
+       border = NA)
+  box(col = "lightgray")
+  on.exit(par(usr))
+  par(usr = c(0, 1, 0, 1))
+  r <- formatC(corr, digits = 2, format = "f")
+  #cex.cor <- .8/strwidth("-X.xx")
+  cex.cor <- 0.7
+  text(0.5, 0.5, r, cex = cex.cor)
+}
+
+out_dir <- "~/Dropbox/JN Fellowship/Manuscript/Submission/Nature Communications/Resubmission/Growth/Data"
+#out_dir <- file.path("Resubmission", "Growth", "Data")
+# full output file path
+out_file <- file.path(out_dir, "EED_corrgram.png")
+# ----- plot -----
+png(filename = out_file, width = 8, height = 8, units = "in", res = 1200)
+
+# Define a Brewer-like RdBu palette
+colfunc <- colorRampPalette(c("#67001F","#B2182B","#D6604D","#F4A582","#FDDBC7",
+                              "#F7F7F7",
+                              "#D1E5F0","#92C5DE","#4393C3","#2166AC","#053061"))
+ncol_bands <- 14
+
+# Corrgram (uses same palette via col.regions)
+corrgram(
+  EED_Corr1, type = "data",
+  lower.panel = panel.shadeNtext,
+  upper.panel = panel.signif,
+  order = "PCA",
+  col.regions = colfunc
+)
+
+## Before plotting, keep the legend panel narrow:
+## (adjust 0.08 → thinner, 0.12 → wider)
+layout(matrix(c(1, 2), nrow = 1), widths = c(1, 0.08))
+
+# ----- (2) Color scale legend for r -----
+# Keep the font the same (cex.axis / cex.lab), just trim margins
+par(mar = c(2, 0.3, 1, 3), cex.axis = 1, cex.lab = 1)
+
+plot.new()
+
+# Draw the strip within a narrow x-range so it looks slim
+legend_width <- 0.35  # fraction of this panel’s width used for the color bar
+plot.window(xlim = c(0, legend_width), ylim = c(-1, 1), xaxs = "i", yaxs = "i")
+
+# Banded legend to match corrgram tiles
+breaks <- seq(-1, 1, length.out = ncol_bands + 1)
+pal    <- colfunc(ncol_bands)
+
+for (i in seq_len(ncol_bands)) {
+  rect(0, breaks[i], legend_width, breaks[i + 1], col = pal[i], border = NA)
+}
+
+# Optional thin outline around the strip
+rect(0, -1, legend_width, 1, border = "grey60")
+
+# Axis at the right edge of this (narrow) panel; font size unchanged
+axis(4, at = seq(-1, 1, by = 0.5), las = 1)
+mtext("Correlation (r)", side = 4, line = 2.2, cex = 0.9)
+
+dev.off()
+
+# corrgram(EED_Corr1, type = "data", 
+#          lower.panel = panel.shadeNtext, 
+#          upper.panel = panel.signif, 
+#          order = "PCA")
+dev.off()
+
+
+```
+
+
+#Scatter plots 
+
+```{r Scatter FIGURE 4 WAD ~ DWAD90}
+
+rm(list = ls())
+# # 
+my_adat10<-read.csv(( "~/Dropbox/JN Fellowship/datasets/processed_datasets/my_adat10_26042025.csv"),
+                        na.strings = c("NA", NA, "","."), row.names = 1)
+SEM_SI_GM<- my_adat10 %>%
+  dplyr::select (record_id, waz_disch, waz_fu90, WAD_disch, WAD_fu90, Delta_WAD_fu90, Delta_WAZ_fu90  ) 
+
+library(ggpubr)
+
+
+set.seed(155551)
+jpeg("Delta_WAD_disch.jpeg",
+units = "in",width = 7, height = 6, res = 600, bg = "transparent")
+A <-ggscatter(SEM_SI_GM, x = "WAD_disch", y = "waz_disch", 
+   color = "black", shape = 20, size = 3, # Points color, shape and size
+   add = "reg.line",  # Add regressin line
+   add.params = list(color = "red", fill = "lightgray"), # Customize reg. line
+   conf.int = TRUE, # Add confidence interval
+   cor.coef = TRUE, # Add correlation coefficient. see ?stat_cor
+   cor.coeff.args = list(method = "pearson", label.x = 3),
+   cor.coef.size = 4,
+   cor.coef.coord = c(-5, 2)
+   ) +
+  font("xlab", size = 15, color = "black", face = "bold") +
+  font("ylab", size = 15, color = "black", face = "bold")+
+  font("xy.text", size = 14, color = "black", face = "bold")+
+  annotate("text", x = -4, y = 1.5, label = paste0("(n = ", nrow(SEM_SI_GM), ")")) +
+   labs(x = "WAD at discharge", y = "WAZ at discharge", title = "WAD and WAZ at discharge") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 18))
+A
+
+# ggsave (here ("Manuscript", "Submission", "Nature Communications", "Resubmission", "Growth", "Scatter_WAD_WAZ_DISCH.jpeg"))
+
+set.seed(155551)
+jpeg("Delta_WAD_disch.jpeg",
+units = "in",width = 7, height = 6, res = 600, bg = "transparent")
+B <-ggscatter(SEM_SI_GM, x = "WAD_fu90", y = "waz_fu90", 
+   color = "black", shape = 20, size = 3, # Points color, shape and size
+   add = "reg.line",  # Add regressin line
+   add.params = list(color = "red", fill = "lightgray"), # Customize reg. line
+   conf.int = TRUE, # Add confidence interval
+   cor.coef = TRUE, # Add correlation coefficient. see ?stat_cor
+   cor.coeff.args = list(method = "pearson", label.x = 3),
+   cor.coef.size = 4,
+   cor.coef.coord = c(-5, 2)
+   ) +
+  font("xlab", size = 15, color = "black", face = "bold") +
+  font("ylab", size = 15, color = "black", face = "bold")+
+  font("xy.text", size = 14, color = "black", face = "bold")+
+  annotate("text", x = -4, y = 1.5, label = paste0("(n = ", nrow(SEM_SI_GM), ")")) +
+   labs(x = "WAD at 3m post-discharge", y = "WAZ at 3m post-discharge", title = "WAD and WAZ at 3m post-discharge") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 18))
+B
+
+# ggsave (here ("Manuscript", "Submission", "Nature Communications", "Resubmission", "Growth", "Scatter_WAD_WAZ_3mpost_DISCH.jpeg"))
+
+set.seed(155551)
+jpeg("Delta_WAD_disch.jpeg",
+units = "in",width = 7, height = 6, res = 600, bg = "transparent")
+O <-ggscatter(SEM_SI_GM, x = "Delta_WAD_fu90", y = "Delta_WAZ_fu90", 
+   color = "black", shape = 20, size = 3, # Points color, shape and size
+   add = "reg.line",  # Add regressin line
+   add.params = list(color = "red", fill = "lightgray"), # Customize reg. line
+   conf.int = TRUE, # Add confidence interval
+   cor.coef = TRUE, # Add correlation coefficient. see ?stat_cor
+   cor.coeff.args = list(method = "pearson", label.x = 3),
+   cor.coef.size = 4,
+   cor.coef.coord = c(-1.5, 3)
+   ) +
+  font("xlab", size = 15, color = "black", face = "bold") +
+  font("ylab", size = 15, color = "black", face = "bold")+
+  font("xy.text", size = 14, color = "black", face = "bold")+
+  annotate("text", x = -1, y = 2.7, label = paste0("(n = ", nrow(SEM_SI_GM), ")")) +
+   labs(x = "Delta-WAD at 3m post-discharge", y = "Delta-WAZ at 3m post-discharge", title = "Delta-WAD and Delta-WAZ at 3m post-discharge") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 18))
+O
+
+# ggsave (here ("Manuscript", "Submission", "Nature Communications", "Resubmission", "Growth", "Scatter_delta-WAD_delta-WAZ_3mpost_DISCH.jpeg"))
+
+
+library(cowplot)
+
+# Combine the plots side by side
+combined_plot <- plot_grid(
+  A, B, O,
+  ncol = 3,
+  labels = c("A", "B", "C"),# Arrange plots in 2 columns
+  align = "h",              # Align horizontally
+  rel_widths = c(7, 7, 7)      # Keep original sizes (equal widths)
+)
+combined_plot
+ggsave (here (  "Manuscript", "Submission", "Nature Communications", "Resubmission", "Growth", "combined_corr_D0_d90.jpeg"), height = 7, width = 21)
+
+```
+
+END
+
+BASELINE CHARACTERISTICS Included versus excluded children
+
+```{r BASELINE CHARACTERISTICS Included versus excluded}
+
+# pvalue_sci <- function(x, small_cutoff = 1e-4, sci_digits = 3, dec_digits = 4, prepend_p = FALSE) {
+#   out <- ifelse(
+#     is.na(x), NA_character_,
+#     ifelse(
+#       x < small_cutoff,
+#       format(x, scientific = TRUE, digits = sci_digits),
+#       style_number(x, digits = dec_digits)
+#     )
+#   )
+#   if (prepend_p) paste0("p = ", out) else out
+# }
+# 
+# my_adat16<-read.csv(( "~/Dropbox/JN Fellowship/datasets/processed_datasets/my_adat16.csv"),
+#                         na.strings = c("NA", NA, "","."), row.names = 1)
+# 
+# names(my_adat16)[names(my_adat16) == "d_waz_disch_fu90"] <- "Delta_WAZ_fu90"#
+# 
+# get_tableS3 <- my_adat16 %>% 
+#   dplyr:: select(discharge_age, sex_adm, site, waz_disch, muac_disch, whz_disch, haz_disch, WAD_disch, waz_fu90, WAD_fu90, Delta_WAZ_fu90,  Delta_WAD_fu90, Days_Hospitalised, albumin_disch, haemoglobin_adj_disch, rbc_disch, wbc_disch, platelets_disch, neutrophils_disch, lymphocytes_disch, osinophils_disch, monocytes_disch, basophils_disch,  alt_disch,	alk_phosphate_disch, urea_disch, creatinine_disch, bilirubin_disch, i_phosphate_disch, magnesium_disch, calcium_adj_disch, diag_lrti_pneumonia_adm, Diarrhoea_adm_binary,	diag_sepsis_adm, diag_malaria_adm, diag_anaemia_adm, diag_tb_adm, categ_enrol, MPO_abs,	AAT_abs,	CAL_abs, LPS_abs, exclusion  ) %>%
+#   tbl_summary(by = exclusion,
+#               type = list(discharge_age ~ 'continuous2',
+#                           waz_disch ~ 'continuous2',
+#                           muac_disch ~ 'continuous2',
+#                           whz_disch ~ 'continuous2',
+#                           WAD_disch ~ 'continuous2',
+#                           waz_fu90 ~ 'continuous2',
+#                           WAD_fu90 ~ 'continuous2',
+#                           Delta_WAZ_fu90 ~ 'continuous2',
+#                           Delta_WAD_fu90 ~ 'continuous2',
+#                           haz_disch ~ "continuous2",
+#                           Days_Hospitalised ~ 'continuous2',
+#                           albumin_disch ~ 'continuous2',
+#                           haemoglobin_adj_disch ~ 'continuous2',
+#                           rbc_disch ~ 'continuous2',
+#                           wbc_disch ~ 'continuous2',
+#                           platelets_disch ~ 'continuous2',
+#                           neutrophils_disch ~ 'continuous2',
+#                           lymphocytes_disch ~ 'continuous2',
+#                           osinophils_disch ~ 'continuous2',
+#                           monocytes_disch ~ 'continuous2',
+#                           basophils_disch ~ 'continuous2',
+#                           alt_disch ~ 'continuous2',
+#                           alk_phosphate_disch ~ 'continuous2',
+#                           urea_disch ~ 'continuous2',
+#                           creatinine_disch ~ 'continuous2',
+#                           bilirubin_disch ~ 'continuous2',
+#                           i_phosphate_disch ~ 'continuous2',
+#                           magnesium_disch ~ 'continuous2',
+#                           calcium_adj_disch ~ 'continuous2'),
+#                 statistic = list(all_continuous() ~ c("{median} ({p25} - {p75})")),
+#               label = list(discharge_age ~ "Age (months)",
+#                            sex_adm ~ "Sex (%)",
+#                            site ~ "Site",
+#                            waz_disch ~ "Weight-for-age z-score",
+#                            muac_disch ~ "Mid-upper arm circumference (cm)",
+#                            whz_disch ~ "Weight-for-height z-score",
+#                            haz_disch ~ "Height-for-age z-score",
+#                           WAD_disch ~ 'Weight absolute deficit (WAD) at discharge',
+#                           waz_fu90 ~ 'WAZ at 3 months',
+#                           WAD_fu90 ~ 'Weight absolute deficit (WAD) at 3 months',
+#                           Delta_WAZ_fu90 ~ 'Change in the WAZ between discharge and 3 months',
+#                            Delta_WAD_fu90 ~ 'Change in the WAD between discharge and 3 months',
+#                            Days_Hospitalised ~ "Days in Hospital",
+#                            albumin_disch ~ "Albumin",
+#                            haemoglobin_adj_disch ~ "Haemoglobin",
+#                            rbc_disch ~ "RBC",
+#                            wbc_disch ~ "WBC",
+#                            platelets_disch ~ "Platelets",
+#                            neutrophils_disch ~ "Neutrophils",
+#                            lymphocytes_disch ~ "Lymphocytes",
+#                            osinophils_disch ~ "Eosinophils",
+#                            monocytes_disch ~ "Monocytes",
+#                            basophils_disch ~ "Basophils",
+#                            alt_disch ~ "Alanine Transaminase",
+#                            alk_phosphate_disch ~ "Alkaline Phosphatase",
+#                            urea_disch ~ "Blood Urea Nitrogen",
+#                            creatinine_disch ~ "Creatinine",
+#                            bilirubin_disch ~ "Bilirubin",
+#                            i_phosphate_disch ~ "Phosphate",
+#                            magnesium_disch ~ "Magnesium",
+#                            calcium_adj_disch ~ "Calcium",
+#                            diag_lrti_pneumonia_adm ~ "Pneumonia",
+#                            Diarrhoea_adm_binary ~ "Diarrhoea",
+#                            diag_sepsis_adm ~ "Sepsis",
+#                            diag_malaria_adm ~ "Malaria",
+#                            diag_anaemia_adm ~ "Anaemia",
+#                            diag_tb_adm ~ "Pulmonary TB",
+#                           categ_enrol ~ "Nutritional group",
+#                           MPO_abs	~ "Myeloperoxidase ng/ml",
+#                           AAT_abs	~ "Alpha-1-Antitrypsin ug/ml",
+#                           CAL_abs ~ "Calprotectin ug/ml",
+#                           LPS_abs ~ "Lipopolysaccharides EU/ml"),
+#                             missing = "no") %>% 
+# modify_spanning_header(c("stat_1", "stat_2") ~ "**Exclusion**") %>%
+# modify_header(label ~ "**Variable**",
+#                 all_stat_cols() ~ "**{level}**\n(n={n})") %>%
+# add_p( 
+#     pvalue_fun = ~ pvalue_sci(.x, small_cutoff = 1e-4, sci_digits = 3, dec_digits = 4)
+#   ) %>%
+#   modify_header(p.value ~ "p-value")  %>%
+# bold_labels() %>%
+# modify_caption("**Table 1. Participant Characteristics**") %>%
+# bold_labels() %>%
+# as_kable_extra(table.attr = "style='width:101%;'") %>%
+# kable_classic(full_width = T, font_size = 14, html_font = "sans-serif") %>%
+# row_spec(0, bold = T) %>%
+# pack_rows("Demographic", 1, 15, label_row_css = "background-color: #666; color: #fff;") %>%
+# pack_rows("Anthropometric indices", 16, 33, label_row_css = "background-color: #666; color: #fff;") %>%
+# pack_rows("Length of hopitalization", 34, 35, label_row_css = "background-color: #666; color: #fff;") %>%
+# pack_rows("Haematology", 36, 55, label_row_css = "background-color: #666; color: #fff;") %>%
+# pack_rows("Biochemistry", 56, 71, label_row_css = "background-color: #666; color: #fff;") %>%
+# pack_rows("Clinical illness at admission", 72, 77, label_row_css = "background-color: #666; color: #fff;") %>% 
+# pack_rows("Nutritional category at enrolment", 78, 79, label_row_css = "background-color: #666; color: #fff;") %>% 
+# pack_rows("Enteric biomarkers of inflammation and permeability", 82, 83, label_row_css = "background-color: #666; color: #fff;")
+#get_tableS3
+```
+
+
